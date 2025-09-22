@@ -10,22 +10,33 @@ namespace ToDoListApp_Backend;
 
 public class Startup
 {
-    public Startup(IConfiguration configuration)
+    public Startup(IConfiguration configuration, IWebHostEnvironment env)
     {
-        // Load .env file trước khi sử dụng configuration
-        Env.Load();
+        var envPath = Path.Combine(env.ContentRootPath, ".env");
 
-        // Sau khi load .env, tạo configuration builder để kết hợp env vars
+        if (File.Exists(envPath))
+        {
+            Env.Load(envPath);
+        }
+        else
+        {
+            var currentEnvPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+            if (File.Exists(currentEnvPath))
+            {
+                Env.Load(currentEnvPath);
+            }
+        }
+
         var builder = new ConfigurationBuilder()
-            .AddConfiguration(configuration)
-            .AddEnvironmentVariables(); // Thêm environment variables từ .env
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+            .AddEnvironmentVariables();
 
         Configuration = builder.Build();
     }
 
     public IConfiguration Configuration { get; }
 
-    // This method gets called by the runtime. Use this method to add services to the container
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddControllers()
@@ -38,17 +49,17 @@ public class Startup
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
 
-        // Add Entity Framework with MySQL
+        // Đọc connection string từ environment variable
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+
         services.AddDbContext<DbtodolistappContext>(options =>
             options.UseMySql(
-                Configuration.GetConnectionString("DefaultConnection"),
-                ServerVersion.AutoDetect(Configuration.GetConnectionString("DefaultConnection"))
+                connectionString,
+                ServerVersion.AutoDetect(connectionString)
             ));
 
-        // Add Cognito Service
         services.AddScoped<ICognitoService, CognitoService>();
 
-        // Add lMySqlConnector.MySqlException: 'Access denied for user 'root'@'localhost' (using password: YES)'ogging
         services.AddLogging(logging =>
         {
             logging.AddConsole();
@@ -56,32 +67,32 @@ public class Startup
             logging.SetMinimumLevel(LogLevel.Information);
         });
 
-        // Configure JWT Authentication
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                var jwtSettings = Configuration.GetSection("JWT");
-                var awsSettings = Configuration.GetSection("AWS:Cognito");
+                // Đọc JWT settings từ environment variables
+                var jwtIssuer = Environment.GetEnvironmentVariable("JWT__Issuer");
+                var jwtAudience = Environment.GetEnvironmentVariable("JWT__Audience");
+                var cognitoAuthority = Environment.GetEnvironmentVariable("AWS__Cognito__Authority");
 
-                options.Authority = awsSettings["Authority"];
-                options.Audience = jwtSettings["Audience"];
+                options.Authority = cognitoAuthority;
+                options.Audience = jwtAudience;
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidIssuer = jwtIssuer,
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
                     ClockSkew = TimeSpan.Zero,
 
-                    // Thêm custom validator này
                     AudienceValidator = (audiences, securityToken, validationParameters) =>
                     {
                         if (securityToken is JsonWebToken jwt)
                         {
                             var clientId = jwt.Claims?.FirstOrDefault(c => c.Type == "client_id")?.Value;
-                            return clientId == jwtSettings["Audience"]; // So sánh client_id với config
+                            return clientId == jwtAudience;
                         }
                         return false;
                     }
@@ -104,7 +115,6 @@ public class Startup
 
         services.AddAuthorization();
 
-        // Add CORS
         services.AddCors(options =>
         {
             options.AddPolicy("AllowAll",
@@ -118,7 +128,6 @@ public class Startup
         });
     }
 
-    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
         if (env.IsDevelopment())
@@ -129,13 +138,8 @@ public class Startup
         }
 
         app.UseHttpsRedirection();
-
-        // Enable CORS - MUST be before UseRouting
         app.UseCors("AllowAll");
-
         app.UseRouting();
-
-        // Authentication and Authorization MUST be after UseRouting
         app.UseAuthentication();
         app.UseAuthorization();
 

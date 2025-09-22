@@ -28,21 +28,27 @@ namespace ToDoListApp_Backend.Services
         {
             _configuration = configuration;
             _logger = logger;
-            _clientId = configuration["AWS:Cognito:ClientId"];
-            _clientSecret = configuration["AWS:Cognito:ClientSecret"];
-            _userPoolId = configuration["AWS:Cognito:UserPoolId"];
 
-            var accessKey = configuration["AWS:AccessKey"];
-            var secretKey = configuration["AWS:SecretKey"];
-            var region = configuration["AWS:Region"];
+            _clientId = configuration["AWS:Cognito:ClientId"]
+                ?? Environment.GetEnvironmentVariable("AWS__Cognito__ClientId");
 
-            _logger.LogInformation("Initializing CognitoService with UserPoolId: {UserPoolId}, ClientId: {ClientId}",
-                _userPoolId, _clientId);
+            _clientSecret = configuration["AWS:Cognito:ClientSecret"]
+                ?? Environment.GetEnvironmentVariable("AWS__Cognito__ClientSecret");
+
+            _userPoolId = configuration["AWS:Cognito:UserPoolId"]
+                ?? Environment.GetEnvironmentVariable("AWS__Cognito__UserPoolId");
+
+            var accessKey = configuration["AWS:AccessKey"]
+                ?? Environment.GetEnvironmentVariable("AWS__AccessKey");
+
+            var secretKey = configuration["AWS:SecretKey"]
+                ?? Environment.GetEnvironmentVariable("AWS__SecretKey");
+
+            var region = configuration["AWS:Region"]
+                ?? Environment.GetEnvironmentVariable("AWS__Region");
 
             if (string.IsNullOrEmpty(_clientId) || string.IsNullOrEmpty(_clientSecret) || string.IsNullOrEmpty(_userPoolId))
             {
-                _logger.LogError("Missing AWS Cognito configuration. ClientId: {ClientId}, UserPoolId: {UserPoolId}",
-                    _clientId, _userPoolId);
                 throw new InvalidOperationException("AWS Cognito configuration is missing or incomplete");
             }
 
@@ -53,14 +59,12 @@ namespace ToDoListApp_Backend.Services
                     secretKey,
                     Amazon.RegionEndpoint.GetBySystemName(region)
                 );
-                _logger.LogInformation("Cognito client created with explicit credentials");
             }
             else
             {
                 _cognitoClient = new AmazonCognitoIdentityProviderClient(
                     Amazon.RegionEndpoint.GetBySystemName(region)
                 );
-                _logger.LogInformation("Cognito client created with default credentials");
             }
         }
 
@@ -293,8 +297,6 @@ namespace ToDoListApp_Backend.Services
         {
             try
             {
-                // Extract username from refresh token if possible
-                // For now, we'll try without username first
                 var message = _clientId;
                 var keyBytes = Encoding.UTF8.GetBytes(_clientSecret);
                 var messageBytes = Encoding.UTF8.GetBytes(message);
@@ -307,7 +309,6 @@ namespace ToDoListApp_Backend.Services
             }
             catch
             {
-                // Fallback to empty string if computation fails
                 return string.Empty;
             }
         }
