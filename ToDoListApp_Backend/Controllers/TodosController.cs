@@ -140,18 +140,15 @@ namespace ToDoListApp_Backend.Controllers
                 _context.Todos.Add(todo);
                 await _context.SaveChangesAsync();
 
-                // Add tags if provided
                 if (request.TagIds.Any())
                 {
                     var validTags = await _context.Tags
                         .Where(t => request.TagIds.Contains(t.TagId) && t.CognitoSub == cognitoSub)
                         .ToListAsync();
-
                     todo.Tags = validTags;
                     await _context.SaveChangesAsync();
                 }
 
-                // Reload todo with tags
                 var createdTodo = await _context.Todos
                     .Where(t => t.TodoId == todo.TodoId)
                     .Include(t => t.Tags)

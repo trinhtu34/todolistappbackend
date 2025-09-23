@@ -10,32 +10,18 @@ namespace ToDoListApp_Backend;
 
 public class Startup
 {
-    public Startup(IConfiguration configuration, IWebHostEnvironment env)
-    {
-        var envPath = Path.Combine(env.ContentRootPath, ".env");
+    public IConfiguration Configuration { get; }
 
-        if (File.Exists(envPath))
-        {
-            Env.Load(envPath);
-        }
-        else
-        {
-            var currentEnvPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
-            if (File.Exists(currentEnvPath))
-            {
-                Env.Load(currentEnvPath);
-            }
-        }
+    public Startup(IConfiguration configuration)
+    {
+        Env.Load();
 
         var builder = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+            .AddConfiguration(configuration)
             .AddEnvironmentVariables();
 
         Configuration = builder.Build();
     }
-
-    public IConfiguration Configuration { get; }
 
     public void ConfigureServices(IServiceCollection services)
     {
@@ -49,15 +35,14 @@ public class Startup
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
 
-        // Đọc connection string từ environment variable
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
-
+        // Add Entity Framework with MySQL
         services.AddDbContext<DbtodolistappContext>(options =>
             options.UseMySql(
-                connectionString,
-                ServerVersion.AutoDetect(connectionString)
+                Configuration.GetConnectionString("DefaultConnection"),
+                ServerVersion.AutoDetect(Configuration.GetConnectionString("DefaultConnection"))
             ));
 
+        // Add Cognito Service
         services.AddScoped<ICognitoService, CognitoService>();
 
         services.AddLogging(logging =>
@@ -70,18 +55,16 @@ public class Startup
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                // Đọc JWT settings từ environment variables
-                var jwtIssuer = Environment.GetEnvironmentVariable("JWT__Issuer");
-                var jwtAudience = Environment.GetEnvironmentVariable("JWT__Audience");
-                var cognitoAuthority = Environment.GetEnvironmentVariable("AWS__Cognito__Authority");
+                var jwtSettings = Configuration.GetSection("JWT");
+                var awsSettings = Configuration.GetSection("AWS:Cognito");
 
-                options.Authority = cognitoAuthority;
-                options.Audience = jwtAudience;
+                options.Authority = awsSettings["Authority"];
+                options.Audience = jwtSettings["Audience"];
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = jwtIssuer,
+                    ValidIssuer = jwtSettings["Issuer"],
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
@@ -92,7 +75,7 @@ public class Startup
                         if (securityToken is JsonWebToken jwt)
                         {
                             var clientId = jwt.Claims?.FirstOrDefault(c => c.Type == "client_id")?.Value;
-                            return clientId == jwtAudience;
+                            return clientId == jwtSettings["Audience"]; // So sánh client_id với config
                         }
                         return false;
                     }
@@ -115,6 +98,7 @@ public class Startup
 
         services.AddAuthorization();
 
+        // Add CORS
         services.AddCors(options =>
         {
             options.AddPolicy("AllowAll",
@@ -128,18 +112,17 @@ public class Startup
         });
     }
 
+    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
-        if (env.IsDevelopment())
-        {
-            app.UseDeveloperExceptionPage();
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
-
         app.UseHttpsRedirection();
+
+        // Enable CORS - MUST be before UseRouting
         app.UseCors("AllowAll");
+
         app.UseRouting();
+
+        // Authentication and Authorization MUST be after UseRouting
         app.UseAuthentication();
         app.UseAuthorization();
 
