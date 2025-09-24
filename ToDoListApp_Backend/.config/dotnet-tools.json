@@ -1,5 +1,13 @@
 {
   "version": 1,
   "isRoot": true,
-  "tools": {}
+  "tools": {
+    "amazon.lambda.tools": {
+      "version": "5.13.0",
+      "commands": [
+        "dotnet-lambda"
+      ],
+      "rollForward": false
+    }
+  }
 }
