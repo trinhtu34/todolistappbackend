@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace ToDoListApp_Backend.Models;
 
@@ -26,7 +23,7 @@ public partial class DbtodolistappContext : DbContext
         if (!optionsBuilder.IsConfigured)
         {
             // Fallback connection string - should be overridden by DI
-            optionsBuilder.UseMySql("server=localhost;database=dbtodolistapp;user id=root;password=your_password", 
+            optionsBuilder.UseMySql("server=localhost;database=dbtodolistapp;user id=root;password=your_password",
                 Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.0.42-mysql"));
         }
     }

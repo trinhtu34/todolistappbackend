@@ -1,9 +1,9 @@
 ﻿using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
 using ToDoListApp_Backend.Models;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace ToDoListApp_Backend.Services
 {
@@ -73,9 +73,9 @@ namespace ToDoListApp_Backend.Services
             try
             {
                 _logger.LogInformation("Attempting to authenticate user: {UsernameOrPhone}", usernameOrPhone);
-                
+
                 var secretHash = ComputeSecretHash(usernameOrPhone);
-                
+
                 var authRequest = new AdminInitiateAuthRequest
                 {
                     UserPoolId = _userPoolId,
@@ -90,7 +90,7 @@ namespace ToDoListApp_Backend.Services
                 };
 
                 var response = await _cognitoClient.AdminInitiateAuthAsync(authRequest);
-                
+
                 _logger.LogInformation("Authentication successful for user: {UsernameOrPhone}", usernameOrPhone);
                 return new CognitoAuthResult
                 {
@@ -103,7 +103,7 @@ namespace ToDoListApp_Backend.Services
             }
             catch (NotAuthorizedException ex)
             {
-                _logger.LogWarning("Authentication failed - Invalid credentials for user: {UsernameOrPhone} - {Message}", 
+                _logger.LogWarning("Authentication failed - Invalid credentials for user: {UsernameOrPhone} - {Message}",
                     usernameOrPhone, ex.Message);
                 return new CognitoAuthResult
                 {
@@ -113,7 +113,7 @@ namespace ToDoListApp_Backend.Services
             }
             catch (UserNotConfirmedException ex)
             {
-                _logger.LogWarning("Authentication failed - User not confirmed: {UsernameOrPhone} - {Message}", 
+                _logger.LogWarning("Authentication failed - User not confirmed: {UsernameOrPhone} - {Message}",
                     usernameOrPhone, ex.Message);
                 return new CognitoAuthResult
                 {
@@ -123,7 +123,7 @@ namespace ToDoListApp_Backend.Services
             }
             catch (UserNotFoundException ex)
             {
-                _logger.LogWarning("Authentication failed - User not found: {UsernameOrPhone} - {Message}", 
+                _logger.LogWarning("Authentication failed - User not found: {UsernameOrPhone} - {Message}",
                     usernameOrPhone, ex.Message);
                 return new CognitoAuthResult
                 {
@@ -133,13 +133,13 @@ namespace ToDoListApp_Backend.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Authentication error for user: {UsernameOrPhone} - {Message}", 
+                _logger.LogError(ex, "Authentication error for user: {UsernameOrPhone} - {Message}",
                     usernameOrPhone, ex.Message);
-                
+
                 // Log the full exception details to help debug SECRET_HASH issues
-                _logger.LogError("Full exception details: {ExceptionType} - {FullMessage}", 
+                _logger.LogError("Full exception details: {ExceptionType} - {FullMessage}",
                     ex.GetType().Name, ex.ToString());
-                
+
                 return new CognitoAuthResult
                 {
                     IsSuccess = false,
@@ -148,25 +148,27 @@ namespace ToDoListApp_Backend.Services
             }
         }
 
+        // vừa thêm secrets hash cho refresh token lúc 1h17 phút ngày 24 tháng 9 năm 2025
         public async Task<CognitoAuthResult> RefreshTokenAsync(string refreshToken)
         {
+            var secretHash = ComputeSecretHashForRefresh(refreshToken);
             try
             {
                 _logger.LogInformation("Attempting to refresh token");
-                
-                // Try with InitiateAuth first (doesn't require SECRET_HASH for refresh)
+
                 var request = new InitiateAuthRequest
                 {
                     ClientId = _clientId,
                     AuthFlow = AuthFlowType.REFRESH_TOKEN_AUTH,
                     AuthParameters = new Dictionary<string, string>
                     {
-                        {"REFRESH_TOKEN", refreshToken}
+                        {"REFRESH_TOKEN", refreshToken},
+                        {"SECRET_HASH",secretHash}
                     }
                 };
 
                 var response = await _cognitoClient.InitiateAuthAsync(request);
-                
+
                 _logger.LogInformation("Token refresh successful");
                 return new CognitoAuthResult
                 {
@@ -179,11 +181,10 @@ namespace ToDoListApp_Backend.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Token refresh error: {Message}", ex.Message);
-                
-                // This might be where SECRET_HASH error appears
-                _logger.LogError("Refresh token full exception: {ExceptionType} - {FullMessage}", 
+
+                _logger.LogError("Refresh token full exception: {ExceptionType} - {FullMessage}",
                     ex.GetType().Name, ex.ToString());
-                
+
                 return new CognitoAuthResult
                 {
                     IsSuccess = false,
@@ -196,11 +197,11 @@ namespace ToDoListApp_Backend.Services
         {
             try
             {
-                _logger.LogInformation("Attempting to sign up user: {Username} with phone: {PhoneNumber}", 
+                _logger.LogInformation("Attempting to sign up user: {Username} with phone: {PhoneNumber}",
                     username, phoneNumber);
-                
+
                 var secretHash = ComputeSecretHash(username);
-                
+
                 var signUpRequest = new SignUpRequest
                 {
                     ClientId = _clientId,
@@ -215,8 +216,8 @@ namespace ToDoListApp_Backend.Services
                 };
 
                 var response = await _cognitoClient.SignUpAsync(signUpRequest);
-                
-                _logger.LogInformation("SignUp successful for user: {Username}, UserSub: {UserSub}", 
+
+                _logger.LogInformation("SignUp successful for user: {Username}, UserSub: {UserSub}",
                     username, response.UserSub);
                 return true;
             }
@@ -232,7 +233,7 @@ namespace ToDoListApp_Backend.Services
             try
             {
                 var secretHash = ComputeSecretHash(username);
-                
+
                 var confirmRequest = new ConfirmSignUpRequest
                 {
                     ClientId = _clientId,
@@ -260,12 +261,12 @@ namespace ToDoListApp_Backend.Services
                 };
 
                 var response = await _cognitoClient.GetUserAsync(request);
-                
+
                 // Extract cognito sub from JWT token
                 var handler = new JwtSecurityTokenHandler();
                 var jsonToken = handler.ReadJwtToken(accessToken);
                 var cognitoSub = jsonToken.Claims.FirstOrDefault(x => x.Type == "sub")?.Value;
-                
+
                 return new UserInfo
                 {
                     Username = response.Username,
@@ -285,7 +286,7 @@ namespace ToDoListApp_Backend.Services
             var message = username + _clientId;
             var keyBytes = Encoding.UTF8.GetBytes(_clientSecret);
             var messageBytes = Encoding.UTF8.GetBytes(message);
-            
+
             using (var hmac = new HMACSHA256(keyBytes))
             {
                 var hashBytes = hmac.ComputeHash(messageBytes);
@@ -300,7 +301,7 @@ namespace ToDoListApp_Backend.Services
                 var message = _clientId;
                 var keyBytes = Encoding.UTF8.GetBytes(_clientSecret);
                 var messageBytes = Encoding.UTF8.GetBytes(message);
-                
+
                 using (var hmac = new HMACSHA256(keyBytes))
                 {
                     var hashBytes = hmac.ComputeHash(messageBytes);

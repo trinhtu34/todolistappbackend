@@ -24,7 +24,7 @@ namespace ToDoListApp_Backend.Controllers
             try
             {
                 var result = await _cognitoService.LoginAsync(request.UsernameOrPhone, request.Password);
-                
+
                 if (result.IsSuccess)
                 {
                     return Ok(new LoginResponse
@@ -36,7 +36,7 @@ namespace ToDoListApp_Backend.Controllers
                         ExpiresIn = result.ExpiresIn
                     });
                 }
-                
+
                 return BadRequest(new LoginResponse
                 {
                     Success = false,
@@ -56,15 +56,16 @@ namespace ToDoListApp_Backend.Controllers
             try
             {
                 var success = await _cognitoService.SignUpAsync(request.Password, request.Name, request.Username, request.PhoneNumber);
-                
+
                 if (success)
                 {
-                    return Ok(new { 
+                    return Ok(new
+                    {
                         message = "Registration successful. Please check your phone for verification code.",
-                        username = request.Username 
+                        username = request.Username
                     });
                 }
-                
+
                 return BadRequest(new { message = "Registration failed. Please check your information and try again." });
             }
             catch (Exception ex)
@@ -80,12 +81,12 @@ namespace ToDoListApp_Backend.Controllers
             try
             {
                 var success = await _cognitoService.ConfirmSignUpAsync(request.Username, request.ConfirmationCode);
-                
+
                 if (success)
                 {
                     return Ok(new { message = "Phone number confirmed successfully. You can now login." });
                 }
-                
+
                 return BadRequest(new { message = "Phone confirmation failed" });
             }
             catch (Exception ex)
@@ -101,7 +102,7 @@ namespace ToDoListApp_Backend.Controllers
             try
             {
                 var result = await _cognitoService.RefreshTokenAsync(request.RefreshToken);
-                
+
                 if (result.IsSuccess)
                 {
                     return Ok(new
@@ -111,7 +112,7 @@ namespace ToDoListApp_Backend.Controllers
                         expiresIn = result.ExpiresIn
                     });
                 }
-                
+
                 return BadRequest(new { message = result.ErrorMessage });
             }
             catch (Exception ex)
@@ -132,13 +133,13 @@ namespace ToDoListApp_Backend.Controllers
                 {
                     var token = authHeader.Substring("Bearer ".Length).Trim();
                     var userInfo = await _cognitoService.GetUserInfoAsync(token);
-                    
+
                     if (userInfo != null)
                     {
                         return Ok(userInfo);
                     }
                 }
-                
+
                 return Unauthorized();
             }
             catch (Exception ex)

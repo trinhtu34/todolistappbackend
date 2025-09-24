@@ -6,20 +6,20 @@ namespace ToDoListApp_Backend.DTOs
     {
         [Required]
         public string Description { get; set; } = string.Empty;
-        
+
         public DateTime? DueDate { get; set; }
-        
+
         public List<int> TagIds { get; set; } = new List<int>();
     }
 
     public class UpdateTodoRequest
     {
         public string? Description { get; set; }
-        
+
         public bool? IsDone { get; set; }
-        
+
         public DateTime? DueDate { get; set; }
-        
+
         public List<int>? TagIds { get; set; }
     }
 

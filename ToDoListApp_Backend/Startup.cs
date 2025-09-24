@@ -98,26 +98,37 @@ public class Startup
 
         services.AddAuthorization();
 
-        // Add CORS
+        // Add CORS , when deploy to amplify or ecs then you have to replace localhost to amplify or loadbalancer's endpoint 
         services.AddCors(options =>
         {
             options.AddPolicy("AllowAll",
                 policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000", "https://localhost:3000")
-                          .AllowAnyMethod()
+                    policy.WithOrigins("https://main.d3lquen85tkdqz.amplifyapp.com")
+                            .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials();
                 });
         });
+
+        // allow all origin , testing environment when not deployed to amplify yet
+        //services.AddCors(options =>
+        //{
+        //    options.AddPolicy("AllowAll", policy =>
+        //    {
+        //        policy.SetIsOriginAllowed(origin => true)
+        //              .AllowAnyMethod()
+        //              .AllowAnyHeader()
+        //              .AllowCredentials();
+        //    });
+        //});
+
     }
 
-    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
         app.UseHttpsRedirection();
 
-        // Enable CORS - MUST be before UseRouting
         app.UseCors("AllowAll");
 
         app.UseRouting();
