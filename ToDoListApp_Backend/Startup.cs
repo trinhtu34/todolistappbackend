@@ -75,7 +75,7 @@ public class Startup
                         if (securityToken is JsonWebToken jwt)
                         {
                             var clientId = jwt.Claims?.FirstOrDefault(c => c.Type == "client_id")?.Value;
-                            return clientId == jwtSettings["Audience"]; // So sánh client_id với config
+                            return clientId == jwtSettings["Audience"];
                         }
                         return false;
                     }
