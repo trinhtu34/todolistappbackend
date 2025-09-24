@@ -136,7 +136,6 @@ namespace ToDoListApp_Backend.Services
                 _logger.LogError(ex, "Authentication error for user: {UsernameOrPhone} - {Message}",
                     usernameOrPhone, ex.Message);
 
-                // Log the full exception details to help debug SECRET_HASH issues
                 _logger.LogError("Full exception details: {ExceptionType} - {FullMessage}",
                     ex.GetType().Name, ex.ToString());
 

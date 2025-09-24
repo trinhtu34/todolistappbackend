@@ -1,0 +1,54 @@
+name: Deploy to AWS Lambda
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.20"
+
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: ./ToDoListApp_Backend
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+        working-directory: ./ToDoListApp_Backend
+
+      - name: Build project
+        run: dotnet build --configuration Release
+        working-directory: ./ToDoListApp_Backend
+
+      - name: Package Lambda
+        run: dotnet lambda package --configuration Release --output-package lambda.zip
+        working-directory: ./ToDoListApp_Backend
+
+      - name: Move ZIP to root
+        run: mv ./ToDoListApp_Backend/lambda.zip .
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::909903098104:role/github-OIDC-for-second-workshop-backend
+          aws-region: ap-southeast-1
+
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name second-workshop-backend-AspNetCoreFunction-pGTLIjphRi8D \
+            --zip-file fileb://lambda.zip
