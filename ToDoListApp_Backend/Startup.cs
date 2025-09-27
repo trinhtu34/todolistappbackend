@@ -70,6 +70,8 @@ public class Startup
                     ValidateIssuerSigningKey = true,
                     ClockSkew = TimeSpan.Zero,
 
+                    RoleClaimType = "cognito:groups",
+
                     AudienceValidator = (audiences, securityToken, validationParameters) =>
                     {
                         if (securityToken is JsonWebToken jwt)
@@ -90,38 +92,46 @@ public class Startup
                     },
                     OnTokenValidated = context =>
                     {
-                        Console.WriteLine($"Token validated for user: {context.Principal.Identity.Name}");
+                        Console.WriteLine($"Token validated for user: {context.Principal.Identity?.Name}");
                         return Task.CompletedTask;
                     }
                 };
             });
 
-        services.AddAuthorization();
-
-        // Add CORS , when deploy to amplify or ecs then you have to replace localhost to amplify or loadbalancer's endpoint 
-        services.AddCors(options =>
+        services.AddAuthorization(options =>
         {
-            options.AddPolicy("AllowAll",
-                policy =>
-                {
-                    policy.WithOrigins("https://main.d3lquen85tkdqz.amplifyapp.com")
-                            .AllowAnyMethod()
-                          .AllowAnyHeader()
-                          .AllowCredentials();
-                });
+            options.AddPolicy("PremiumOnly", policy =>
+                policy.RequireRole("Premium-user"));
+            options.AddPolicy("NormalOnly" , policy =>
+                policy.RequireRole("Normal-user"));
         });
 
-        // allow all origin , testing environment when not deployed to amplify yet
+
+
+        // Add CORS , when deploy to amplify or ecs then you have to replace localhost to amplify or loadbalancer's endpoint 
         //services.AddCors(options =>
         //{
-        //    options.AddPolicy("AllowAll", policy =>
-        //    {
-        //        policy.SetIsOriginAllowed(origin => true)
-        //              .AllowAnyMethod()
-        //              .AllowAnyHeader()
-        //              .AllowCredentials();
-        //    });
+        //    options.AddPolicy("AllowAll",
+        //        policy =>
+        //        {
+        //            policy.WithOrigins("https://main.d3lquen85tkdqz.amplifyapp.com")
+        //                    .AllowAnyMethod()
+        //                  .AllowAnyHeader()
+        //                  .AllowCredentials();
+        //        });
         //});
+
+        // allow all origin , testing environment when not deployed to amplify yet
+        services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAll", policy =>
+            {
+                policy.SetIsOriginAllowed(origin => true)
+                      .AllowAnyMethod()
+                      .AllowAnyHeader()
+                      .AllowCredentials();
+            });
+        });
 
     }
 

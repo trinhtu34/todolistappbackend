@@ -34,6 +34,7 @@ namespace ToDoListApp_Backend.Controllers
             return string.Empty;
         }
 
+        [Authorize(Policy = "PremiumOnly")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TagResponse>>> GetTags()
         {
@@ -63,6 +64,7 @@ namespace ToDoListApp_Backend.Controllers
             }
         }
 
+        [Authorize(Policy = "PremiumOnly")]
         [HttpGet("{id}")]
         public async Task<ActionResult<TagResponse>> GetTag(int id)
         {
@@ -97,6 +99,7 @@ namespace ToDoListApp_Backend.Controllers
             }
         }
 
+        [Authorize(Policy = "PremiumOnly")]
         [HttpPost]
         public async Task<ActionResult<TagResponse>> CreateTag([FromBody] CreateTagRequest request)
         {
@@ -132,6 +135,7 @@ namespace ToDoListApp_Backend.Controllers
             }
         }
 
+        [Authorize(Policy = "PremiumOnly")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTag(int id, [FromBody] UpdateTagRequest request)
         {
@@ -163,6 +167,7 @@ namespace ToDoListApp_Backend.Controllers
             }
         }
 
+        [Authorize(Policy = "PremiumOnly")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTag(int id)
         {

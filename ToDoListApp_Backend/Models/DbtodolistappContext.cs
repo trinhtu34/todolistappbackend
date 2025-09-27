@@ -17,17 +17,6 @@ public partial class DbtodolistappContext : DbContext
 
     public virtual DbSet<Todo> Todos { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        // Configuration will be handled by DI in Startup.cs
-        if (!optionsBuilder.IsConfigured)
-        {
-            // Fallback connection string - should be overridden by DI
-            optionsBuilder.UseMySql("server=localhost;database=dbtodolistapp;user id=root;password=your_password",
-                Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.0.42-mysql"));
-        }
-    }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
