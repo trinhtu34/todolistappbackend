@@ -275,5 +275,123 @@ namespace ToDoListApp_Backend.Controllers
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
+
+        [Authorize(Policy = "PremiumOnly")]
+        [HttpPost("{id}/tags")]
+        public async Task<IActionResult> AddTagToTodo(int id, [FromBody] AddTagRequest request)
+        {
+            try
+            {
+                var cognitoSub = GetCognitoSub();
+                if (string.IsNullOrEmpty(cognitoSub))
+                {
+                    return Unauthorized();
+                }
+
+                var todo = await _context.Todos
+                    .Include(t => t.Tags)
+                    .FirstOrDefaultAsync(t => t.TodoId == id && t.CognitoSub == cognitoSub);
+
+                if (todo == null)
+                {
+                    return NotFound("Todo not found");
+                }
+
+                var tag = await _context.Tags
+                    .FirstOrDefaultAsync(t => t.TagId == request.TagId && t.CognitoSub == cognitoSub);
+
+                if (tag == null)
+                {
+                    return NotFound("Tag not found");
+                }
+
+                if (!todo.Tags.Any(t => t.TagId == request.TagId))
+                {
+                    todo.Tags.Add(tag);
+                    await _context.SaveChangesAsync();
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding tag to todo {TodoId}", id);
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+        [Authorize(Policy = "PremiumOnly")]
+        [HttpDelete("{id}/tags/{tagId}")]
+        public async Task<IActionResult> RemoveTagFromTodo(int id, int tagId)
+        {
+            try
+            {
+                var cognitoSub = GetCognitoSub();
+                if (string.IsNullOrEmpty(cognitoSub))
+                {
+                    return Unauthorized();
+                }
+
+                var todo = await _context.Todos
+                    .Include(t => t.Tags)
+                    .FirstOrDefaultAsync(t => t.TodoId == id && t.CognitoSub == cognitoSub);
+
+                if (todo == null)
+                {
+                    return NotFound();
+                }
+
+                var tag = todo.Tags.FirstOrDefault(t => t.TagId == tagId);
+                if (tag != null)
+                {
+                    todo.Tags.Remove(tag);
+                    await _context.SaveChangesAsync();
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing tag from todo {TodoId}", id);
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+        [Authorize(Policy = "PremiumOnly")]
+        [HttpGet("{id}/tags")]
+        public async Task<ActionResult<IEnumerable<TagResponse>>> GetTodoTags(int id)
+        {
+            try
+            {
+                var cognitoSub = GetCognitoSub();
+                if (string.IsNullOrEmpty(cognitoSub))
+                {
+                    return Unauthorized();
+                }
+
+                var todo = await _context.Todos
+                    .Where(t => t.TodoId == id && t.CognitoSub == cognitoSub)
+                    .Include(t => t.Tags)
+                    .FirstOrDefaultAsync();
+
+                if (todo == null)
+                {
+                    return NotFound();
+                }
+
+                var tags = todo.Tags.Select(t => new TagResponse
+                {
+                    TagId = t.TagId,
+                    TagName = t.TagName
+                }).ToList();
+
+                return Ok(tags);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting todo tags {TodoId}", id);
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
     }
 }

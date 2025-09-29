@@ -19,4 +19,10 @@ namespace ToDoListApp_Backend.DTOs
         public int TagId { get; set; }
         public string TagName { get; set; } = string.Empty;
     }
+
+    public class AddTagRequest
+    {
+        [Required]
+        public int TagId { get; set; }
+    }
 }

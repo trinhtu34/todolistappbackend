@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using System.Text.Json;
 using ToDoListApp_Backend.Models;
 using ToDoListApp_Backend.Services;
 
@@ -28,7 +29,7 @@ public class Startup
         services.AddControllers()
             .AddJsonOptions(options =>
             {
-                options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
                 options.JsonSerializerOptions.WriteIndented = true;
             });
 
@@ -101,12 +102,10 @@ public class Startup
         services.AddAuthorization(options =>
         {
             options.AddPolicy("PremiumOnly", policy =>
-                policy.RequireRole("Premium-user"));
+                policy.RequireRole("Premium-user")); // Sửa lại cho khớp với JWT
             options.AddPolicy("NormalOnly" , policy =>
                 policy.RequireRole("Normal-user"));
         });
-
-
 
         // Add CORS , when deploy to amplify or ecs then you have to replace localhost to amplify or loadbalancer's endpoint 
         //services.AddCors(options =>
