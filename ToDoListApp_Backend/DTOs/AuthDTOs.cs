@@ -5,7 +5,8 @@ namespace ToDoListApp_Backend.DTOs
     public class LoginRequest
     {
         [Required]
-        public string UsernameOrPhone { get; set; } = string.Empty;
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
 
         [Required]
         public string Password { get; set; } = string.Empty;
@@ -24,8 +25,8 @@ namespace ToDoListApp_Backend.DTOs
     public class RegisterRequest
     {
         [Required]
-        [Phone]
-        public string PhoneNumber { get; set; } = string.Empty;
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
 
         [Required]
         [MinLength(8)]
@@ -33,15 +34,13 @@ namespace ToDoListApp_Backend.DTOs
 
         [Required]
         public string Name { get; set; } = string.Empty;
-
-        [Required]
-        public string Username { get; set; } = string.Empty;
     }
 
     public class ConfirmSignUpRequest
     {
         [Required]
-        public string Username { get; set; } = string.Empty;
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
 
         [Required]
         public string ConfirmationCode { get; set; } = string.Empty;

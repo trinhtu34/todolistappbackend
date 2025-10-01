@@ -102,7 +102,7 @@ public class Startup
         services.AddAuthorization(options =>
         {
             options.AddPolicy("PremiumOnly", policy =>
-                policy.RequireRole("Premium-user")); // Sửa lại cho khớp với JWT
+                policy.RequireRole("Premium-user"));
             options.AddPolicy("NormalOnly" , policy =>
                 policy.RequireRole("Normal-user"));
         });
@@ -131,7 +131,6 @@ public class Startup
                       .AllowCredentials();
             });
         });
-
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

@@ -23,7 +23,7 @@ namespace ToDoListApp_Backend.Controllers
         {
             try
             {
-                var result = await _cognitoService.LoginAsync(request.UsernameOrPhone, request.Password);
+                var result = await _cognitoService.LoginAsync(request.Email, request.Password);
 
                 if (result.IsSuccess)
                 {
@@ -45,7 +45,7 @@ namespace ToDoListApp_Backend.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Login error for user {UsernameOrPhone}", request.UsernameOrPhone);
+                _logger.LogError(ex, "Login error for user {Email}", request.Email);
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
@@ -55,14 +55,14 @@ namespace ToDoListApp_Backend.Controllers
         {
             try
             {
-                var success = await _cognitoService.SignUpAsync(request.Password, request.Name, request.Username, request.PhoneNumber);
+                var success = await _cognitoService.SignUpAsync(request.Password, request.Name, request.Email);
 
                 if (success)
                 {
                     return Ok(new
                     {
-                        message = "Registration successful. Please check your phone for verification code.",
-                        username = request.Username
+                        message = "Registration successful. Please check your email for verification code.",
+                        email = request.Email
                     });
                 }
 
@@ -70,7 +70,7 @@ namespace ToDoListApp_Backend.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Registration error for user {Username}: {Error}", request.Username, ex.Message);
+                _logger.LogError(ex, "Registration error for user {Email}: {Error}", request.Email, ex.Message);
                 return StatusCode(500, new { message = $"Internal server error: {ex.Message}" });
             }
         }
@@ -80,18 +80,18 @@ namespace ToDoListApp_Backend.Controllers
         {
             try
             {
-                var success = await _cognitoService.ConfirmSignUpAsync(request.Username, request.ConfirmationCode);
+                var success = await _cognitoService.ConfirmSignUpAsync(request.Email, request.ConfirmationCode);
 
                 if (success)
                 {
-                    return Ok(new { message = "Phone number confirmed successfully. You can now login." });
+                    return Ok(new { message = "Email confirmed successfully. You can now login." });
                 }
 
-                return BadRequest(new { message = "Phone confirmation failed" });
+                return BadRequest(new { message = "Email confirmation failed" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Phone confirmation error for user {Username}", request.Username);
+                _logger.LogError(ex, "Email confirmation error for user {Email}", request.Email);
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }

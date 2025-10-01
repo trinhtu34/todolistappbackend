@@ -9,10 +9,10 @@ namespace ToDoListApp_Backend.Services
 {
     public interface ICognitoService
     {
-        Task<CognitoAuthResult> LoginAsync(string usernameOrPhone, string password);
+        Task<CognitoAuthResult> LoginAsync(string email, string password);
         Task<CognitoAuthResult> RefreshTokenAsync(string refreshToken);
-        Task<bool> SignUpAsync(string password, string name, string username, string phoneNumber);
-        Task<bool> ConfirmSignUpAsync(string username, string confirmationCode);
+        Task<bool> SignUpAsync(string password, string name, string email);
+        Task<bool> ConfirmSignUpAsync(string email, string confirmationCode);
         Task<UserInfo> GetUserInfoAsync(string accessToken);
     }
     public class CognitoService : ICognitoService
@@ -68,13 +68,13 @@ namespace ToDoListApp_Backend.Services
             }
         }
 
-        public async Task<CognitoAuthResult> LoginAsync(string usernameOrPhone, string password)
+        public async Task<CognitoAuthResult> LoginAsync(string email, string password)
         {
             try
             {
-                _logger.LogInformation("Attempting to authenticate user: {UsernameOrPhone}", usernameOrPhone);
+                _logger.LogInformation("Attempting to authenticate user: {Email}", email);
 
-                var secretHash = ComputeSecretHash(usernameOrPhone);
+                var secretHash = ComputeSecretHash(email);
 
                 var authRequest = new AdminInitiateAuthRequest
                 {
@@ -83,7 +83,7 @@ namespace ToDoListApp_Backend.Services
                     AuthFlow = AuthFlowType.ADMIN_USER_PASSWORD_AUTH,
                     AuthParameters = new Dictionary<string, string>
                     {
-                        {"USERNAME", usernameOrPhone},
+                        {"USERNAME", email},
                         {"PASSWORD", password},
                         {"SECRET_HASH", secretHash}
                     }
@@ -91,7 +91,7 @@ namespace ToDoListApp_Backend.Services
 
                 var response = await _cognitoClient.AdminInitiateAuthAsync(authRequest);
 
-                _logger.LogInformation("Authentication successful for user: {UsernameOrPhone}", usernameOrPhone);
+                _logger.LogInformation("Authentication successful for user: {Email}", email);
                 return new CognitoAuthResult
                 {
                     IsSuccess = true,
@@ -103,28 +103,28 @@ namespace ToDoListApp_Backend.Services
             }
             catch (NotAuthorizedException ex)
             {
-                _logger.LogWarning("Authentication failed - Invalid credentials for user: {UsernameOrPhone} - {Message}",
-                    usernameOrPhone, ex.Message);
+                _logger.LogWarning("Authentication failed - Invalid credentials for user: {Email} - {Message}",
+                    email, ex.Message);
                 return new CognitoAuthResult
                 {
                     IsSuccess = false,
-                    ErrorMessage = "Invalid username/phone or password"
+                    ErrorMessage = "Invalid email or password"
                 };
             }
             catch (UserNotConfirmedException ex)
             {
-                _logger.LogWarning("Authentication failed - User not confirmed: {UsernameOrPhone} - {Message}",
-                    usernameOrPhone, ex.Message);
+                _logger.LogWarning("Authentication failed - User not confirmed: {Email} - {Message}",
+                    email, ex.Message);
                 return new CognitoAuthResult
                 {
                     IsSuccess = false,
-                    ErrorMessage = "User phone number not confirmed"
+                    ErrorMessage = "User email not confirmed"
                 };
             }
             catch (UserNotFoundException ex)
             {
-                _logger.LogWarning("Authentication failed - User not found: {UsernameOrPhone} - {Message}",
-                    usernameOrPhone, ex.Message);
+                _logger.LogWarning("Authentication failed - User not found: {Email} - {Message}",
+                    email, ex.Message);
                 return new CognitoAuthResult
                 {
                     IsSuccess = false,
@@ -133,8 +133,8 @@ namespace ToDoListApp_Backend.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Authentication error for user: {UsernameOrPhone} - {Message}",
-                    usernameOrPhone, ex.Message);
+                _logger.LogError(ex, "Authentication error for user: {Email} - {Message}",
+                    email, ex.Message);
 
                 _logger.LogError("Full exception details: {ExceptionType} - {FullMessage}",
                     ex.GetType().Name, ex.ToString());
@@ -192,51 +192,50 @@ namespace ToDoListApp_Backend.Services
             }
         }
 
-        public async Task<bool> SignUpAsync(string password, string name, string username, string phoneNumber)
+        public async Task<bool> SignUpAsync(string password, string name, string email)
         {
             try
             {
-                _logger.LogInformation("Attempting to sign up user: {Username} with phone: {PhoneNumber}",
-                    username, phoneNumber);
+                _logger.LogInformation("Attempting to sign up user: {Email}", email);
 
-                var secretHash = ComputeSecretHash(username);
+                var secretHash = ComputeSecretHash(email);
 
                 var signUpRequest = new SignUpRequest
                 {
                     ClientId = _clientId,
-                    Username = username,
+                    Username = email,
                     Password = password,
                     SecretHash = secretHash,
                     UserAttributes = new List<AttributeType>
                     {
                         new AttributeType { Name = "name", Value = name },
-                        new AttributeType { Name = "phone_number", Value = phoneNumber }
+                        new AttributeType { Name = "email", Value = email }
                     }
                 };
 
                 var response = await _cognitoClient.SignUpAsync(signUpRequest);
 
-                _logger.LogInformation("SignUp successful for user: {Username}, UserSub: {UserSub}",
-                    username, response.UserSub);
+                _logger.LogInformation("SignUp successful for user: {Email}, UserSub: {UserSub}",
+                    email, response.UserSub);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "SignUp error for user: {Username} - {Message}", username, ex.Message);
+                _logger.LogError(ex, "SignUp error for user: {Email} - {Message}", email, ex.Message);
                 return false;
             }
         }
 
-        public async Task<bool> ConfirmSignUpAsync(string username, string confirmationCode)
+        public async Task<bool> ConfirmSignUpAsync(string email, string confirmationCode)
         {
             try
             {
-                var secretHash = ComputeSecretHash(username);
+                var secretHash = ComputeSecretHash(email);
 
                 var confirmRequest = new ConfirmSignUpRequest
                 {
                     ClientId = _clientId,
-                    Username = username,
+                    Username = email,
                     ConfirmationCode = confirmationCode,
                     SecretHash = secretHash
                 };
@@ -269,7 +268,7 @@ namespace ToDoListApp_Backend.Services
                 return new UserInfo
                 {
                     Username = response.Username,
-                    PhoneNumber = response.UserAttributes.FirstOrDefault(x => x.Name == "phone_number")?.Value,
+                    Email = response.UserAttributes.FirstOrDefault(x => x.Name == "email")?.Value,
                     Name = response.UserAttributes.FirstOrDefault(x => x.Name == "name")?.Value,
                     CognitoSub = cognitoSub
                 };
@@ -280,9 +279,9 @@ namespace ToDoListApp_Backend.Services
             }
         }
 
-        private string ComputeSecretHash(string username)
+        private string ComputeSecretHash(string email)
         {
-            var message = username + _clientId;
+            var message = email + _clientId;
             var keyBytes = Encoding.UTF8.GetBytes(_clientSecret);
             var messageBytes = Encoding.UTF8.GetBytes(message);
 
